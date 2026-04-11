@@ -29,7 +29,10 @@ export default function OrdersList() {
         const orderIdentifier = order.mesa ? `Mesa ${order.mesa}` : (order.name || "Pedido sin nombre");
         sessionStorage.setItem("editingOrderName", orderIdentifier);
 
-        // Redirect to home to let the user add items to the cart
+        // Preserve original state so checkout can redirect back to /orders after adding items
+        const originalState = String(order.state || (order as any).status || "").toLowerCase().trim();
+        sessionStorage.setItem("editingOrderState", originalState);
+
         router.push("/home");
     };
 

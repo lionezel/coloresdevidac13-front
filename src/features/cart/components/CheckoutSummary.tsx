@@ -48,12 +48,16 @@ export default function CheckoutSummary() {
     const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
     const [editingOrderName, setEditingOrderName] = useState<string | null>(null);
 
+    const [editingOrderState, setEditingOrderState] = useState<string | null>(null);
+
     useEffect(() => {
         const id = sessionStorage.getItem("editingOrderId");
         const nameOrder = sessionStorage.getItem("editingOrderName");
+        const state = sessionStorage.getItem("editingOrderState");
         if (id) {
             setEditingOrderId(id);
             setEditingOrderName(nameOrder);
+            setEditingOrderState(state);
         }
     }, []);
 
@@ -134,25 +138,45 @@ export default function CheckoutSummary() {
 
                 if (orderSnap.exists()) {
                     const existingOrder = orderSnap.data();
-                    const updatedProducts = [...(existingOrder.products || []), ...safeProducts];
+
+                    // Merge products: sum quantities if same variantId, else add as new
+                    const merged = [...(existingOrder.products || [])];
+                    for (const newProd of safeProducts) {
+                        const idx = merged.findIndex(
+                            (p: any) => p.variantId === newProd.variantId && p.productId === newProd.productId
+                        );
+                        if (idx !== -1) {
+                            merged[idx] = {
+                                ...merged[idx],
+                                quantity: (merged[idx].quantity || 1) + (newProd.quantity || 1),
+                            };
+                        } else {
+                            merged.push(newProd);
+                        }
+                    }
+
                     const updatedSubtotal = (existingOrder.subtotal || 0) + subtotal;
-                    const updatedTotal = (existingOrder.total || 0) + subtotal; // We only add subtotal of new cart to existing order
+                    const updatedTotal = (existingOrder.total || 0) + subtotal;
 
                     await updateDoc(orderRef, {
-                        products: updatedProducts,
+                        products: merged,
                         subtotal: updatedSubtotal,
                         total: updatedTotal,
-                        state: "en_orden",
+                        // Preserve existing state — do NOT reset to "en_orden"
                         waitressId: user?.uid || existingOrder.waitressId || null,
                         waitressName: user?.email || existingOrder.waitressName || null,
                     });
 
 
+                    const wasReady = editingOrderState === 'listo / caja' || editingOrderState === 'listo';
+
                     sessionStorage.removeItem("editingOrderId");
                     sessionStorage.removeItem("editingOrderName");
+                    sessionStorage.removeItem("editingOrderState");
 
                     await clearCart();
-                    router.push("/ordersuccess");
+                    // If the order was already "listo/caja", go back to orders; otherwise ordersuccess
+                    router.push(wasReady ? "/orders" : "/ordersuccess");
                     return;
                 }
             }

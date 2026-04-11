@@ -49,9 +49,9 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category }) => {
                                 {item.name}
                             </h3>
 
-                            <span className="mt-1.5 text-xs sm:text-sm font-semibold text-gray-400/80 uppercase tracking-wider">
+                            {/* <span className="mt-1.5 text-xs sm:text-sm font-semibold text-gray-400/80 uppercase tracking-wider">
                                 {Math.floor(Math.random() * 10) + 1} items
-                            </span>
+                            </span> */}
 
                             <div
                                 className="mt-5 flex items-center justify-center text-gray-300 transition-all duration-300 group-hover:text-gray-800"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, query, orderBy, onSnapshot, limit, where } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, limit } from "firebase/firestore";
 import { db } from "@/src/firebase/config";
 import { RestaurantId } from "@/src/global/id";
 import { Order } from "@/src/features/comanda/types/order.types";
@@ -20,10 +20,9 @@ export const useOrders = () => {
             return;
         }
 
-        // Filter orders by waitressId so each mesera only sees her own orders
+        // All authenticated users can see all orders
         const q = query(
             collection(db, "restaurants", RestaurantId, "orders"),
-            where("waitressId", "==", user.uid),
             orderBy("date", "desc"),
             limit(50)
         );
