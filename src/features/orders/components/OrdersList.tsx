@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useOrders, OrderWithId } from "../hooks/useOrders";
 import { ColorGlobal } from "@/src/global/colorGlobal";
 import { useFormatPrice } from "@/src/features/category/hooks/useFormatPrice";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CheckoutDialog from "./CheckoutDialog";
-import { doc, setDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/src/firebase/config";
 import { RestaurantId } from "@/src/global/id";
 
@@ -18,6 +18,66 @@ export default function OrdersList() {
 
     const [checkoutOrder, setCheckoutOrder] = useState<OrderWithId | null>(null);
     const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
+    const [updatingOrderNode, setUpdatingOrderNode] = useState<{orderId: string, index: number} | null>(null);
+
+    const updateProductQuantity = async (order: OrderWithId, productIndex: number, delta: number) => {
+        try {
+            setUpdatingOrderNode({ orderId: order.id, index: productIndex });
+            const newProducts = [...order.products];
+            const currentQuantity = Number(newProducts[productIndex].quantity);
+            const newQuantity = currentQuantity + delta;
+            
+            if (newQuantity <= 0) {
+                return confirmRemoveProduct(order, productIndex);
+            }
+
+            newProducts[productIndex].quantity = newQuantity;
+            const newTotal = newProducts.reduce((acc, p) => acc + (p.price * p.quantity), 0);
+
+            const orderRef = doc(db, "restaurants", RestaurantId, "orders", order.id);
+            await updateDoc(orderRef, {
+                products: newProducts,
+                total: newTotal
+            });
+        } catch (e) {
+            console.error("Error updating quantity:", e);
+        } finally {
+            setUpdatingOrderNode(null);
+        }
+    };
+
+    const confirmRemoveProduct = async (order: OrderWithId, productIndex: number) => {
+        if (!window.confirm("¿Estás seguro de eliminar este producto de la orden?")) {
+            setUpdatingOrderNode(null);
+            return;
+        }
+        try {
+            setUpdatingOrderNode({ orderId: order.id, index: productIndex });
+            const newProducts = [...order.products];
+            newProducts.splice(productIndex, 1);
+            const newTotal = newProducts.reduce((acc, p) => acc + (p.price * p.quantity), 0);
+
+            const orderRef = doc(db, "restaurants", RestaurantId, "orders", order.id);
+            await updateDoc(orderRef, {
+                products: newProducts,
+                total: newTotal
+            });
+        } catch (e) {
+            console.error("Error removing product:", e);
+        } finally {
+            setUpdatingOrderNode(null);
+        }
+    };
+
+    // Keep the checkout order in sync with the live orders list (e.g. if a product is removed)
+    useEffect(() => {
+        if (checkoutOrder) {
+            const updated = orders.find(o => o.id === checkoutOrder.id);
+            if (updated && JSON.stringify(updated) !== JSON.stringify(checkoutOrder)) {
+                setCheckoutOrder(updated);
+            }
+        }
+    }, [orders, checkoutOrder]);
 
     const toggleExpand = (orderId: string) => {
         setExpandedOrders(prev => ({ ...prev, [orderId]: !prev[orderId] }));
@@ -57,7 +117,7 @@ export default function OrdersList() {
                 isGuiaPlan: completedOrder.isGuiaPlan || false,
                 guiaDiscount: completedOrder.guiaDiscount || 0,
                 total: completedOrder.total,
-                state: "listo / caja",
+                state: "completada",
                 isPaid: true,
                 paidAt: new Date()
             };
@@ -178,27 +238,36 @@ export default function OrdersList() {
                             {/* Products preview */}
                             <div className="mb-6 flex-1">
                                 <ul className="space-y-2">
-                                    {order.products?.slice(0, 3).map((prod, i) => (
-                                        <li key={i} className="flex justify-between text-sm text-gray-600 font-[Ubuntu]">
-                                            <span className="truncate pr-4">
-                                                <span className="font-bold mr-1">{prod.quantity}x</span>
-                                                {prod.productName}
-                                            </span>
-                                        </li>
-                                    ))}
-                                    {expandedOrders[order.id] && order.products?.slice(3).map((prod, i) => (
-                                        <li key={`extra-${i}`} className="flex justify-between text-sm text-gray-600 font-[Ubuntu] animate-fade-in">
-                                            <span className="truncate pr-4">
-                                                <span className="font-bold mr-1">{prod.quantity}x</span>
-                                                {prod.productName}
-                                            </span>
-                                        </li>
-                                    ))}
+                                    {order.products?.map((prod, actualIndex) => {
+                                        if (!expandedOrders[order.id] && actualIndex >= 3) return null;
+                                        
+                                        const isUpdating = updatingOrderNode?.orderId === order.id && updatingOrderNode?.index === actualIndex;
+
+                                        return (
+                                            <li key={actualIndex} className={`flex justify-between items-center text-sm text-gray-600 font-[Ubuntu] bg-gray-50/50 p-2 rounded-lg border border-gray-100 transition-opacity ${isUpdating ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                <span className="truncate pr-2 flex-1">
+                                                    <span className="font-bold mr-1">{prod.quantity}x</span>
+                                                    {prod.productName}
+                                                </span>
+                                                {!isPaid && (
+                                                    <div className="flex gap-1 items-center bg-white p-1 rounded-md shadow-sm border border-gray-200">
+                                                        <button onClick={() => updateProductQuantity(order, actualIndex, -1)} disabled={isUpdating} className="w-6 h-6 flex justify-center items-center rounded-sm bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all text-gray-600 font-bold disabled:opacity-50">-</button>
+                                                        <button onClick={() => updateProductQuantity(order, actualIndex, 1)} disabled={isUpdating} className="w-6 h-6 flex justify-center items-center rounded-sm bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all text-gray-600 font-bold disabled:opacity-50">+</button>
+                                                        <button onClick={() => confirmRemoveProduct(order, actualIndex)} disabled={isUpdating} className="w-6 h-6 flex justify-center items-center rounded-sm bg-red-100 hover:bg-red-200 active:scale-95 transition-all text-red-600 ml-1 disabled:opacity-50">
+                                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </li>
+                                        )
+                                    })}
                                     {order.products?.length > 3 && (
-                                        <li className="mt-2">
+                                        <li className="mt-2 text-center">
                                             <button
                                                 onClick={() => toggleExpand(order.id)}
-                                                className="text-xs font-bold flex items-center gap-1 transition-colors hover:opacity-80"
+                                                className="text-xs font-bold inline-flex items-center gap-1 transition-colors hover:opacity-80 px-3 py-1 bg-gray-100 rounded-full"
                                                 style={{ color: ColorGlobal }}
                                             >
                                                 <svg

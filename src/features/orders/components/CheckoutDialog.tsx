@@ -4,6 +4,9 @@ import { useAllProducts } from "../hooks/useAllProducts";
 import { useCreditCustomers } from "../../cart/hooks/useCreditCustomers";
 import { InvoiceReceipt } from "./InvoiceReceipt";
 import { ColorGlobal } from "@/src/global/colorGlobal";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/src/firebase/config";
+import { RestaurantId } from "@/src/global/id";
 
 interface CheckoutDialogProps {
     open: boolean;
@@ -22,6 +25,7 @@ export default function CheckoutDialog({
     const [cashReceived, setCashReceived] = useState<number | "">("");
     const [cashCurrency, setCashCurrency] = useState<"COP" | "USD">("COP");
     const [usdExchangeRate, setUsdExchangeRate] = useState<number>(4200);
+    const [isRemoving, setIsRemoving] = useState<number | null>(null);
 
     // Plan Guía
     const [isGuiaPlan, setIsGuiaPlan] = useState<boolean>(false);
@@ -152,6 +156,35 @@ export default function CheckoutDialog({
             printWindow.focus();
             printWindow.print();
             printWindow.close();
+        }
+    };
+
+    const handleRemoveProduct = async (indexToRemove: number) => {
+        if (!order || !order.id) return;
+        const confirmDelete = window.confirm("¿Estás seguro de eliminar este producto de la orden? La actualización es inmediata.");
+        if (!confirmDelete) return;
+
+        setIsRemoving(indexToRemove);
+        try {
+            const newProducts = [...order.products];
+            newProducts.splice(indexToRemove, 1);
+            
+            const newTotal = newProducts.reduce((acc, p) => acc + (p.price * p.quantity), 0);
+
+            const orderRef = doc(db, "restaurants", RestaurantId, "orders", order.id);
+            await updateDoc(orderRef, {
+                products: newProducts,
+                total: newTotal
+            });
+            
+            if (newProducts.length === 0) {
+               onClose();
+            }
+        } catch (e) {
+            console.error("Error removing product:", e);
+            alert("Error al eliminar el producto.");
+        } finally {
+            setIsRemoving(null);
         }
     };
 
