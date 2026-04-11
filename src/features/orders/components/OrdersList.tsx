@@ -55,13 +55,17 @@ export default function OrdersList() {
             setUpdatingOrderNode({ orderId: order.id, index: productIndex });
             const newProducts = [...order.products];
             newProducts.splice(productIndex, 1);
-            const newTotal = newProducts.reduce((acc, p) => acc + (p.price * p.quantity), 0);
-
             const orderRef = doc(db, "restaurants", RestaurantId, "orders", order.id);
-            await updateDoc(orderRef, {
-                products: newProducts,
-                total: newTotal
-            });
+            
+            if (newProducts.length === 0) {
+                await deleteDoc(orderRef);
+            } else {
+                const newTotal = newProducts.reduce((acc, p) => acc + (p.price * p.quantity), 0);
+                await updateDoc(orderRef, {
+                    products: newProducts,
+                    total: newTotal
+                });
+            }
         } catch (e) {
             console.error("Error removing product:", e);
         } finally {
