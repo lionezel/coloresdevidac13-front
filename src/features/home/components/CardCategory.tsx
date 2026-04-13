@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
 import { ColorCoffee } from "@/src/global/colorGlobal";
 import { category } from "../types/category";
@@ -14,24 +14,28 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ category }) => {
     return (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 w-full">
             {category.map((item, index) => {
-                console.log("Navigating to category:", item.name);
+                const isFirst = index === 0;
                 return (
                     <motion.div
                         key={item.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1, type: "spring", stiffness: 100, damping: 15 }}
+                        transition={{ delay: Math.min(index * 0.1, 0.4), type: "spring", stiffness: 100, damping: 15 }}
                     >
                         <Link
                             href={`/${item.name.toLowerCase().replace(/\s+/g, '-')}`}
                             className="group relative flex flex-col items-center overflow-hidden rounded-[2rem] bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] border border-gray-100/80 transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full"
                         >
-                            <div className="w-full aspect-[4/3] sm:aspect-square overflow-hidden rounded-[1.5rem] mb-5 bg-gray-50/50">
+                            <div className="w-full aspect-[4/3] sm:aspect-square overflow-hidden rounded-[1.5rem] mb-5 bg-gray-50/50 relative">
                                 {item.banner ? (
-                                    <img
+                                    <Image
                                         src={item.banner}
                                         alt={item.name}
-                                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                        fill
+                                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                                        className="object-cover transition-transform duration-700 group-hover:scale-105"
+                                        priority={isFirst}
+                                        loading={isFirst ? undefined : "lazy"}
                                     />
                                 ) : (
                                     <div className="h-full w-full flex items-center justify-center bg-gray-50/50">

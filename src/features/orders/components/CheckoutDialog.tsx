@@ -148,6 +148,7 @@ export default function CheckoutDialog({
         const printWindow = window.open('', '', 'width=800,height=600');
         if (printWindow) {
             printWindow.document.write('<html><head><title>Factura</title>');
+            printWindow.document.write(`<base href="${window.location.origin}" />`);
             printWindow.document.write('<style>body { font-family: monospace; padding: 20px; } .flex { display: flex; } .justify-between { justify-content: space-between; } .text-center { text-align: center; } .font-bold { font-weight: bold; } .text-xl { font-size: 1.25rem; } .mb-6 { margin-bottom: 1.5rem; } .pb-4 { padding-bottom: 1rem; } .border-b { border-bottom: 1px solid #e5e7eb; } .border-t { border-top: 1px solid #e5e7eb; } .pt-4 { padding-top: 1rem; } .text-gray-500 { color: #6b7280; } .uppercase { text-transform: uppercase; } .text-red-600 { color: #dc2626; } .text-green-600 { color: #16a34a; } .mt-8 { margin-top: 2rem; } .text-xs { font-size: 0.75rem; }</style>');
             printWindow.document.write('</head><body>');
             printWindow.document.write(printContent);

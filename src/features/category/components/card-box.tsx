@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFormatPrice } from "../hooks/useFormatPrice";
 import { useCart } from "../../cart/hooks/useCart";
@@ -80,22 +81,27 @@ export const CardBox: React.FC<CardBoxProps> = ({ products, additions }) => {
                     const variant = defaultVariant(product);
                     if (!variant) return null;
 
+                    const isFirst = index === 0;
                     return (
                         <motion.div
                             key={product.id}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05, type: "spring", stiffness: 100 }}
+                            transition={{ delay: Math.min(index * 0.05, 0.3), type: "spring", stiffness: 100 }}
                             className="bg-white rounded-[1.8rem] sm:rounded-[2rem] overflow-hidden shadow-[0_8px_20px_rgb(0,0,0,0.03)] border border-gray-100/60 hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300 cursor-pointer flex flex-col h-full group"
                             whileHover={{ y: -6 }}
                             onClick={() => openSelectionModal(product, variant)}
                         >
                             <div className="w-full aspect-[4/3] sm:aspect-square bg-gray-50 overflow-hidden relative">
                                 {variant.image ? (
-                                    <img
+                                    <Image
                                         src={variant.image}
                                         alt={product.name}
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                        fill
+                                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                                        className="object-cover transition-transform duration-700 group-hover:scale-105"
+                                        priority={isFirst}
+                                        loading={isFirst ? undefined : "lazy"}
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center bg-gray-50">
