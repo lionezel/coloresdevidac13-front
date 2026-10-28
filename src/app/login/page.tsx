@@ -28,10 +28,21 @@ export default function LoginPage() {
         setError("");
         setSubmitting(true);
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            await signInWithEmailAndPassword(auth, email.trim(), password);
             router.push("/home");
-        } catch {
-            setError("Correo o contraseña incorrectos. Verifica tus credenciales.");
+        } catch (err: any) {
+            console.error("Login error:", err?.code, err?.message);
+            if (err?.code === "auth/invalid-credential" || err?.code === "auth/wrong-password" || err?.code === "auth/user-not-found") {
+                setError("Correo o contraseña incorrectos. Verifica tus credenciales.");
+            } else if (err?.code === "auth/too-many-requests") {
+                setError("Demasiados intentos fallidos. Espera unos minutos antes de volver a intentar.");
+            } else if (err?.code === "auth/network-request-failed") {
+                setError("Error de red. Revisa tu conexión a internet.");
+            } else if (err?.code === "auth/invalid-email") {
+                setError("El formato del correo electrónico no es válido.");
+            } else {
+                setError(err?.message || "Ocurrió un error al iniciar sesión.");
+            }
         } finally {
             setSubmitting(false);
         }

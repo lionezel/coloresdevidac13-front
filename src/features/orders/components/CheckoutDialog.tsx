@@ -217,9 +217,12 @@ export default function CheckoutDialog({
                 customer: customerData,
                 // USD payment fields
                 cashCurrency: paymentMethod === "efectivo" ? cashCurrency : null,
+                usdReceived: paymentMethod === "efectivo" && cashCurrency === "USD" && cashReceived !== "" ? Number(cashReceived) : null,
                 usdAmount: paymentMethod === "efectivo" && cashCurrency === "USD" && cashReceived !== "" ? Number(cashReceived) : null,
-                changeInCOP: paymentMethod === "efectivo" && changeToGive > 0 ? changeToGive : null,
+                usdExchangeRate: paymentMethod === "efectivo" && cashCurrency === "USD" ? usdExchangeRate : null,
                 exchangeRate: paymentMethod === "efectivo" && cashCurrency === "USD" ? usdExchangeRate : null,
+                changeInCOP: paymentMethod === "efectivo" && changeToGive > 0 ? Math.ceil(changeToGive) : null,
+                copReceivedFromUSD: paymentMethod === "efectivo" && cashCurrency === "USD" && cashReceived !== "" ? Number(cashReceived) * usdExchangeRate : null,
             };
 
             Object.keys(payload).forEach(key => {
